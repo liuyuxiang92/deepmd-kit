@@ -11,7 +11,8 @@ def merge_weighted_errors(
 ) -> dict[str, tuple[float, float]]:
     """Combine prediction errors, keeping the weight they were combined over.
 
-    An MAE is the mean of the absolute errors and an RMSE the root of the mean
+    Accuracy and cross-entropy are ordinary frame means. An MAE is the mean
+    of the absolute errors and an RMSE the root of the mean
     of their squares, so both are recovered exactly from the partial results by
     weighting the mean, respectively the squared mean, by the number of
     elements each was taken over. Combining partial results is therefore
@@ -22,7 +23,8 @@ def merge_weighted_errors(
     ----------
     errors : list[dict[str, tuple[float, float]]]
         One ``{quantity: (error, weight)}`` mapping per partial result. A
-        quantity name starts with ``mae`` or ``rmse``.
+        quantity name starts with ``mae`` or ``rmse``, or is ``accuracy``
+        or ``cross_entropy``.
 
     Returns
     -------
@@ -33,13 +35,13 @@ def merge_weighted_errors(
     Raises
     ------
     RuntimeError
-        If a quantity name identifies neither an MAE nor an RMSE.
+        If a quantity name does not identify a supported metric.
     """
     sum_err: dict[str, float] = defaultdict(float)
     sum_siz: dict[str, float] = defaultdict(float)
     for err in errors:
         for kk, (ee, ss) in err.items():
-            if kk.startswith("mae"):
+            if kk.startswith("mae") or kk in {"accuracy", "cross_entropy"}:
                 sum_err[kk] += ee * ss
             elif kk.startswith("rmse"):
                 sum_err[kk] += ee * ee * ss
@@ -50,19 +52,19 @@ def merge_weighted_errors(
     for kk, total in sum_err.items():
         weight = sum_siz[kk]
         mean = total / weight
-        merged[kk] = (mean if kk.startswith("mae") else float(np.sqrt(mean)), weight)
+        merged[kk] = (float(np.sqrt(mean)) if kk.startswith("rmse") else mean, weight)
     return merged
 
 
 def weighted_average(errors: list[dict[str, tuple[float, float]]]) -> dict:
-    """Compute weighted average of prediction errors (MAE or RMSE) for model.
+    """Compute weighted MAE, RMSE, accuracy or cross-entropy for a model.
 
     Parameters
     ----------
     errors : list[dict[str, tuple[float, float]]]
         List: the error of systems
         Dict: the error of quantities, name given by the key
-        str: the name of the quantity, must starts with 'mae' or 'rmse'
+        str: a name starting with 'mae' or 'rmse', or 'accuracy'/'cross_entropy'
         Tuple: (error, weight)
 
     Returns

@@ -1,4 +1,7 @@
 # SPDX-License-Identifier: LGPL-3.0-or-later
+from .classification_fitting import (
+    ClassificationFittingNet,
+)
 from .base_fitting import (
     BaseFitting,
 )
@@ -29,6 +32,7 @@ from .unimol_pretrain import (
 
 __all__ = [
     "BaseFitting",
+    "ClassificationFittingNet",
     "DOSFittingNet",
     "DipoleFitting",
     "EnergyFittingNet",

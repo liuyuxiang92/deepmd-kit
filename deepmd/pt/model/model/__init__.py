@@ -49,6 +49,9 @@ from deepmd.utils.spin import (
     env_protection_descriptors,
 )
 
+from .classification_model import (
+    ClassificationModel,
+)
 from .dipole_model import (
     DipoleModel,
 )
@@ -433,6 +436,8 @@ def get_standard_model(model_params: dict) -> BaseModel:
         modelcls = DOSModel
     elif fitting_net_type in ["ener", "direct_force_ener"]:
         modelcls = EnergyModel
+    elif fitting_net_type == "classification":
+        modelcls = ClassificationModel
     elif fitting_net_type == "property":
         modelcls = PropertyModel
     elif fitting_net_type == "population":
@@ -547,10 +552,10 @@ def get_sezm_model(model_params: dict) -> BaseModel:
     if fitting_net["type"] in ("dpa4_ener", "sezm_ener"):
         fitting = BaseFitting(**fitting_net)
         modelcls = SeZMModel
-    elif fitting_net["type"] == "property":
+    elif fitting_net["type"] in ("property", "classification"):
         if bridging_method != "NONE":
             raise ValueError(
-                "DPA4/SeZM property fitting does not support analytical bridging "
+                "DPA4/SeZM property and classification fitting do not support analytical bridging "
                 "potentials; set `bridging_method` to `none`."
             )
         # Share the SeZM auto-width convention
@@ -567,7 +572,7 @@ def get_sezm_model(model_params: dict) -> BaseModel:
         modelcls = SeZMPropertyModel
     else:
         raise ValueError(
-            "DPA4/SeZM model supports `dpa4_ener`, `sezm_ener`, or `property` "
+            "DPA4/SeZM model supports `dpa4_ener`, `sezm_ener`, `property`, or `classification` "
             f"fitting, but got `{fitting_net['type']}`."
         )
     atom_exclude_types = model_params.get("atom_exclude_types", [])
@@ -778,6 +783,7 @@ def get_model(model_params: dict) -> Any:
 
 __all__ = [
     "BaseModel",
+    "ClassificationModel",
     "DOSModel",
     "DPModelCommon",
     "DPZBLModel",

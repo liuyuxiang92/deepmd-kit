@@ -111,6 +111,7 @@ from deepmd.pt.utils.compile_compat import (
 )
 from deepmd.pt.utils.compile_compat import trace_pad_dim as _trace_pad_dim
 from deepmd.pt_expt.loss import (
+    ClassificationLoss,
     DOSLoss,
     EnergyLoss,
     EnergySpinLoss,
@@ -370,6 +371,10 @@ def get_loss(
             tensor_name = "polar"
         loss_params["tensor_name"] = tensor_name
         return TensorLoss(**loss_params)
+    elif loss_type == "classification":
+        loss_params["num_classes"] = _model.get_num_classes()
+        loss_params["var_name"] = _model.get_var_name()
+        return ClassificationLoss(**loss_params)
     elif loss_type == "property":
         task_dim = _model.get_task_dim()
         var_name = _model.get_var_name()
@@ -3656,7 +3661,7 @@ class Trainer(AbstractTrainer):
             return None
 
         valid_results: dict[str, float] = {}
-        sum_natoms = 0
+        sum_weights = 0
         for _ii in range(task.valid_numb_batch):
             val_input, val_label = self.get_data(is_train=False, task_key=task.key)
             if not val_input:
@@ -3667,19 +3672,23 @@ class Trainer(AbstractTrainer):
                 label=val_label,
                 task_key=task.key,
             )
-            # The metrics are per-atom quantities, so each batch weighs by the
-            # real atoms it holds summed over its frames. Phantom atoms
-            # (atype < 0), which pad a mixed-nloc batch, contribute to none.
-            natoms = int((val_input["atype"] >= 0).sum())
-            sum_natoms += natoms
+            # Classification accuracy counts frames. The other objectives
+            # retain their atom weighting, excluding padding (atype < 0).
+            task_loss = self.losses[task.key]
+            weight = (
+                val_label[task_loss.var_name].shape[0]
+                if isinstance(task_loss, ClassificationLoss)
+                else int((val_input["atype"] >= 0).sum())
+            )
+            sum_weights += weight
             for key, value in vmore.items():
                 if "l2_" not in key:
                     valid_results[key] = (
-                        valid_results.get(key, 0.0) + self._to_float(value) * natoms
+                        valid_results.get(key, 0.0) + self._to_float(value) * weight
                     )
-        if sum_natoms > 0:
+        if sum_weights > 0:
             valid_results = {
-                key: value / sum_natoms for key, value in valid_results.items()
+                key: value / sum_weights for key, value in valid_results.items()
             }
         return valid_results
 

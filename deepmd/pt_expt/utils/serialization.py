@@ -1210,6 +1210,13 @@ def _collect_metadata(
         "sel_type": [int(t) for t in model.get_sel_type()],
         "is_spin": is_spin,
     }
+    if getattr(model, "get_var_name", lambda: None)() is not None:
+        meta["var_name"] = model.get_var_name()
+        meta["task_dim"] = model.get_task_dim()
+        meta["intensive"] = model.get_intensive()
+        meta["is_classification"] = bool(
+            getattr(model, "get_is_classification", lambda: False)()
+        )
     if is_spin:
         # The scheme is what selects the serving backend class in C++
         # (``deepmd_create_deepspin_backend_v1``): "native" is served by

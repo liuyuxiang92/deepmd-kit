@@ -1,0 +1,63 @@
+{
+  "model": {
+    "type": "DPA4",
+    "type_map": [
+      "H"
+    ],
+    "descriptor": {
+      "rcut": 4.0,
+      "sel": 20,
+      "channels": 8,
+      "n_radial": 4,
+      "lmax": 1,
+      "mmax": 1,
+      "n_blocks": 1,
+      "use_amp": false,
+      "precision": "float64",
+      "seed": 42
+    },
+    "fitting_net": {
+      "type": "classification",
+      "num_classes": 2,
+      "label_name": "class",
+      "neuron": [
+        8
+      ],
+      "precision": "float64",
+      "seed": 42
+    }
+  },
+  "learning_rate": {
+    "type": "exp",
+    "start_lr": 0.003,
+    "stop_lr": 0.0003,
+    "decay_steps": 50
+  },
+  "loss": {
+    "type": "classification"
+  },
+  "optimizer": {
+    "type": "Adam"
+  },
+  "training": {
+    "training_data": {
+      "systems": [
+        "data/train"
+      ],
+      "batch_size": 4
+    },
+    "validation_data": {
+      "systems": [
+        "data/valid"
+      ],
+      "batch_size": 4,
+      "numb_batch": 2
+    },
+    "numb_steps": 100,
+    "disp_freq": 10,
+    "save_freq": 100,
+    "stat_file": "stat.h5",
+    "disp_file": "lcurve.out",
+    "seed": 42
+  }
+}

@@ -3331,6 +3331,36 @@ def fitting_property() -> list[Argument]:
     ]
 
 
+@fitting_args_plugin.register("classification", doc=supported_backends("pt", "pt_expt"))
+def fitting_classification() -> list[Argument]:
+    """Arguments for system-level single-label classification."""
+    return [
+        Argument(
+            "num_classes",
+            int,
+            optional=False,
+            doc="Number of mutually exclusive classes; must be at least 2.",
+        ),
+        Argument(
+            "label_name",
+            str,
+            optional=True,
+            default="class",
+            doc="Name of the scalar integer class label in the dataset, with values from 0 to num_classes - 1.",
+        ),
+        Argument("neuron", list[int], optional=True, default=[128, 128, 128]),
+        Argument("activation_function", str, optional=True, default="tanh"),
+        Argument("resnet_dt", bool, optional=True, default=True),
+        Argument("precision", str, optional=True, default="default"),
+        Argument("seed", [int, None], optional=True),
+        Argument("trainable", [list[bool], bool], optional=True, default=True),
+        Argument("numb_fparam", int, optional=True, default=0),
+        Argument("numb_aparam", int, optional=True, default=0),
+        Argument("default_fparam", list[float], optional=True, default=None),
+        Argument("dim_case_embd", int, optional=True, default=0),
+    ]
+
+
 @fitting_args_plugin.register(
     "polar", doc=supported_backends("tf", "pt", "pt_expt", "tf2") + doc_polar
 )
@@ -3945,8 +3975,8 @@ def sezm_model_args() -> Argument:
     doc_fitting = (
         "Fitting network configuration. DPA4/SeZM uses the `dpa4_ener` GLU "
         "energy fitting by default. The PyTorch backend also supports invariant "
-        "`property` fitting; PyTorch Exportable currently accepts only "
-        "`dpa4_ener`."
+        "`property` fitting. Both PyTorch backends support `classification` "
+        "fitting for a single class label per system."
     )
     doc_model_branch_alias = (
         "List of aliases for this model branch. "
@@ -3998,7 +4028,7 @@ def sezm_model_args() -> Argument:
     doc_model = (
         "DPA4/SeZM model scaffold with the SeZM descriptor. It supports energy "
         "fitting in PyTorch and PyTorch Exportable, plus invariant-property "
-        "fitting in PyTorch."
+        "fitting in PyTorch and single-label classification in both backends."
     )
 
     # ``get_argument`` constructs a fresh Argument, so narrowing this label does
@@ -4035,6 +4065,7 @@ def sezm_model_args() -> Argument:
                         [
                             fitting_args_plugin.get_argument("dpa4_ener"),
                             dpa4_property_fitting,
+                            fitting_args_plugin.get_argument("classification"),
                         ],
                         optional=True,
                         default_tag="dpa4_ener",
@@ -5635,6 +5666,12 @@ def loss_property() -> list[Argument]:
 
 
 # YWolfeee: Modified to support tensor type of loss args.
+@loss_args_plugin.register("classification", doc=supported_backends("pt", "pt_expt"))
+def loss_classification() -> list[Argument]:
+    """Arguments for single-label cross-entropy loss."""
+    return []
+
+
 @loss_args_plugin.register(
     "tensor", doc=supported_backends("tf", "pt", "pt_expt", "tf2")
 )
@@ -5758,7 +5795,7 @@ def loss_unimol() -> list[Argument]:
 
 
 def loss_variant_type_args() -> Variant:
-    doc_loss = "The type of the loss. When the fitting type is `ener`, the loss type should be set to `ener`, its legacy alias `ener_hess`, `dens` (Only DPA4/SeZM supported), or left unset. Hessian supervision is configured through `start_pref_h` and `limit_pref_h` on the `ener` loss. When the fitting type is `property`, the loss type should be set to `property`. When the fitting type is `dipole` or `polar`, the loss type should be set to `tensor`."
+    doc_loss = "The type of the loss. When the fitting type is `ener`, the loss type should be set to `ener`, its legacy alias `ener_hess`, `dens` (Only DPA4/SeZM supported), or left unset. Hessian supervision is configured through `start_pref_h` and `limit_pref_h` on the `ener` loss. When the fitting type is `property`, the loss type should be set to `property`. When the fitting type is `classification`, the loss type must be `classification`. When the fitting type is `dipole` or `polar`, the loss type should be set to `tensor`."
 
     return Variant(
         "type",

@@ -27,6 +27,9 @@ from deepmd.pt.model.descriptor.sezm_nn import (
 from deepmd.pt.model.task.base_fitting import (
     BaseFitting,
 )
+from deepmd.pt.model.task.classification import (
+    ClassificationFittingNet,
+)
 from deepmd.pt.model.task.ener import (
     EnergyFittingNet,
     EnergyFittingNetDirect,
@@ -704,6 +707,30 @@ class SeZMAtomicModel(DPAtomicModel):
             if original_mode == "dens":
                 self._compute_or_load_dens_force_stat(wrapped_sampler, stat_file_path)
 
+    def compute_or_load_out_stat(
+        self,
+        merged: Any,
+        stat_file_path: DPPath | None = None,
+    ) -> None:
+        """Skip regression statistics for categorical labels."""
+        if isinstance(self.fitting_net, ClassificationFittingNet):
+            return
+        super().compute_or_load_out_stat(merged, stat_file_path)
+
+    def change_out_bias(
+        self,
+        sample_merged: Any,
+        stat_file_path: DPPath | None = None,
+        bias_adjust_mode: str = "change-by-statistic",
+        **kwargs: Any,
+    ) -> None:
+        """Keep classification logits independent of class-ID statistics."""
+        if isinstance(self.fitting_net, ClassificationFittingNet):
+            return
+        super().change_out_bias(
+            sample_merged, stat_file_path, bias_adjust_mode, **kwargs
+        )
+
     def apply_out_stat(
         self,
         ret: dict[str, torch.Tensor],
@@ -724,6 +751,8 @@ class SeZMAtomicModel(DPAtomicModel):
         dict[str, torch.Tensor]
             Outputs after SeZM output-stat post-processing.
         """
+        if isinstance(self.fitting_net, ClassificationFittingNet):
+            return ret
         out_bias, out_std = self._fetch_out_stat(self.bias_keys)
         for key in self.bias_keys:
             if key not in ret:

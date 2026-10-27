@@ -16,6 +16,9 @@ from deepmd.dpmodel.atomic_model.linear_atomic_model import (
 from deepmd.dpmodel.atomic_model.pairtab_atomic_model import (
     PairTabAtomicModel as PairTabAtomicModelDP,
 )
+from deepmd.dpmodel.fitting.dpa4_ener import (
+    _resolve_auto_neuron,
+)
 from deepmd.dpmodel.model.model_factory import (
     BackendModelFactory,
 )
@@ -30,6 +33,9 @@ from deepmd.pt_expt.descriptor import (
 )
 from deepmd.pt_expt.fitting import (
     BaseFitting,
+)
+from deepmd.pt_expt.model.classification_model import (
+    ClassificationModel,
 )
 from deepmd.pt_expt.model.dp_zbl_model import (
     DPZBLModel,
@@ -80,7 +86,7 @@ get_zbl_model = _model_factory.get_zbl_model
 
 
 def get_sezm_model(data: dict) -> BaseModel:
-    """Build a pt_expt energy model from a DPA4/SeZM model config.
+    """Build a pt_expt energy or classification DPA4/SeZM model.
 
     Mirrors :func:`deepmd.pt.model.model.get_sezm_model` so that dpa4/sezm
     training configs are interchangeable between the pt and pt_expt backends.
@@ -145,9 +151,10 @@ def get_sezm_model(data: dict) -> BaseModel:
             "Model type 'dpa4' requires a DPA4/SeZM descriptor, but got "
             f"descriptor type '{data['descriptor']['type']}'."
         )
-    if data["fitting_net"]["type"] not in ("dpa4_ener", "sezm_ener"):
+    if data["fitting_net"]["type"] not in ("dpa4_ener", "sezm_ener", "classification"):
         raise ValueError(
-            "Model type 'dpa4' requires the DPA4/SeZM energy fitting net, but got "
+            "Model type 'dpa4' requires a DPA4/SeZM energy fitting net or a "
+            "classification fitting net, but got "
             f"fitting_net type '{data['fitting_net']['type']}'."
         )
 
@@ -167,8 +174,46 @@ def get_sezm_model(data: dict) -> BaseModel:
     data["pair_exclude_types"] = pair_exclude_types
     data["descriptor"]["exclude_types"] = copy.deepcopy(pair_exclude_types)
 
-    descriptor, fitting, _ = _model_factory.get_model_components(data)
-    return DPA4EnergyModel(
+    if data["fitting_net"]["type"] == "classification":
+        # The family builder shares pt's auto-width convention. Resolve it
+        # against the constructed descriptor before creating the classifier;
+        # a literal zero-width hidden layer would discard every input feature.
+        if "type_embedding" in data:
+            raise ValueError(
+                "In the pt_expt backend, type_embedding is not at the model "
+                "level, but within the descriptor."
+            )
+        descriptor_data = copy.deepcopy(data["descriptor"])
+        descriptor_type = descriptor_data.pop("type")
+        descriptor_data["ntypes"] = len(data["type_map"])
+        descriptor_data["type_map"] = copy.deepcopy(data["type_map"])
+        descriptor = BaseDescriptor.get_class_by_type(descriptor_type)(
+            **descriptor_data
+        )
+        fitting_data = copy.deepcopy(data["fitting_net"])
+        fitting_data.pop("type")
+        fitting_data["ntypes"] = descriptor.get_ntypes()
+        fitting_data["type_map"] = copy.deepcopy(data["type_map"])
+        fitting_data["mixed_types"] = descriptor.mixed_types()
+        fitting_data["dim_descrpt"] = descriptor.get_dim_out()
+        fitting_data["neuron"] = _resolve_auto_neuron(
+            fitting_data.get("neuron"),
+            dim_descrpt=fitting_data["dim_descrpt"],
+            numb_fparam=fitting_data.get("numb_fparam", 0),
+            numb_aparam=fitting_data.get("numb_aparam", 0),
+            dim_case_embd=fitting_data.get("dim_case_embd", 0),
+            case_film_embd=fitting_data.get("case_film_embd", False),
+            use_aparam_as_mask=fitting_data.get("use_aparam_as_mask", False),
+        )
+        fitting = BaseFitting.get_class_by_type("classification")(**fitting_data)
+    else:
+        descriptor, fitting, _ = _model_factory.get_model_components(data)
+    model_cls = (
+        ClassificationModel
+        if data["fitting_net"]["type"] == "classification"
+        else DPA4EnergyModel
+    )
+    return model_cls(
         descriptor=descriptor,
         fitting=fitting,
         type_map=data["type_map"],

@@ -1,4 +1,7 @@
 # SPDX-License-Identifier: LGPL-3.0-or-later
+from .classification import (
+    ClassificationFittingNet,
+)
 from .base_fitting import (
     BaseFitting,
 )
@@ -30,6 +33,7 @@ from .sezm_ener import (
 
 __all__ = [
     "BaseFitting",
+    "ClassificationFittingNet",
     "DOSFittingNet",
     "DipoleFittingNet",
     "EnergyFittingNet",

@@ -1,4 +1,7 @@
 # SPDX-License-Identifier: LGPL-3.0-or-later
+from deepmd.dpmodel.loss.classification import (
+    ClassificationLoss,
+)
 from deepmd.dpmodel.loss.dos import (
     DOSLoss,
 )
@@ -19,6 +22,7 @@ from deepmd.dpmodel.loss.unimol import (
 )
 
 __all__ = [
+    "ClassificationLoss",
     "DOSLoss",
     "EnergyLoss",
     "EnergySpinLoss",

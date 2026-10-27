@@ -31,6 +31,9 @@ from deepmd.dpmodel.utils.serialization import (
 from deepmd.env import (
     GLOBAL_NP_FLOAT_PRECISION,
 )
+from deepmd.infer.deep_classification import (
+    DeepClassification,
+)
 from deepmd.infer.deep_dipole import (
     DeepDipole,
 )
@@ -139,6 +142,8 @@ class DeepEval(DeepEvalBackend):
     def model_type(self) -> type["DeepEvalWrapper"]:
         """The evaluator of the model type."""
         model = self.get_model()
+        if getattr(model, "get_is_classification", lambda: False)():
+            return DeepClassification
         model_output_type = model.model_output_type()
         if "energy" in model_output_type:
             return DeepPot

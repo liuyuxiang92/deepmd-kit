@@ -1,4 +1,7 @@
 # SPDX-License-Identifier: LGPL-3.0-or-later
+from .classification import (
+    ClassificationLoss,
+)
 from .dens import (
     DeNSLoss,
 )
@@ -26,6 +29,7 @@ from .tensor import (
 )
 
 __all__ = [
+    "ClassificationLoss",
     "DOSLoss",
     "DeNSLoss",
     "EnergyHessianStdLoss",

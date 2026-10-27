@@ -47,6 +47,10 @@ def model_uses_graph_lower(model: Any) -> bool:
         ``True`` when the model is mixed-type and its descriptor enables the
         graph lower.
     """
+    # A classification label may itself be called "energy"; its logits still
+    # cannot use the energy-specific compiled-training/export translation.
+    if getattr(model, "get_is_classification", lambda: False)():
+        return False
     mixed_types = getattr(model, "mixed_types", None)
     if mixed_types is None:
         return False

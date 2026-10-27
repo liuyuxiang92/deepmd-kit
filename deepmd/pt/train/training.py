@@ -47,6 +47,7 @@ from deepmd.loggers.training import (
     log_parameter_counts,
 )
 from deepmd.pt.loss import (
+    ClassificationLoss,
     DeNSLoss,
     DOSLoss,
     EnergySpinLoss,
@@ -1504,11 +1505,14 @@ class Trainer:
                             task_key=_task_key,
                         )
                         # more_loss.update({"rmse": math.sqrt(loss)})
-                        # The metrics are per-atom quantities, so each batch
-                        # weighs by the real atoms it holds summed over its
-                        # frames. Phantom atoms (atype < 0), which pad a
-                        # mixed-nloc batch, contribute to none of them.
-                        natoms = int((input_dict["atype"] >= 0).sum())
+                        # Classification counts one prediction per frame.
+                        # Existing regression metrics retain real-atom weights,
+                        # excluding phantom atoms in mixed-nloc batches.
+                        loss_module = self._get_inner_module().loss[_task_key]
+                        if isinstance(loss_module, ClassificationLoss):
+                            natoms = int(label_dict[loss_module.var_name].shape[0])
+                        else:
+                            natoms = int((input_dict["atype"] >= 0).sum())
                         sum_natoms += natoms
                         for k, v in more_loss.items():
                             if "l2_" not in k:
@@ -2401,6 +2405,10 @@ def get_loss(
             tensor_name = "polar"
         loss_params["tensor_name"] = tensor_name
         return TensorLoss(**loss_params)
+    elif loss_type == "classification":
+        loss_params["num_classes"] = _model.get_task_dim()
+        loss_params["var_name"] = _model.get_var_name()
+        return ClassificationLoss(**loss_params)
     elif loss_type == "property":
         task_dim = _model.get_task_dim()
         var_name = _model.get_var_name()

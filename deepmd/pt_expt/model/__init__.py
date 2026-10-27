@@ -3,6 +3,9 @@ from deepmd.dpmodel.model.make_hessian_model import (
     make_hessian_model,
 )
 
+from .classification_model import (
+    ClassificationModel,
+)
 from .dipole_model import (
     DipoleModel,
 )
@@ -48,6 +51,7 @@ from .unimol_pretrain_model import (
 
 __all__ = [
     "BaseModel",
+    "ClassificationModel",
     "DOSModel",
     "DPA4EnergyModel",
     "DPZBLModel",

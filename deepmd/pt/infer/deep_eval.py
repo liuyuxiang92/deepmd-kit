@@ -23,6 +23,9 @@ from deepmd.dpmodel.output_def import (
 from deepmd.infer.deep_dipole import (
     DeepDipole,
 )
+from deepmd.infer.deep_classification import (
+    DeepClassification,
+)
 from deepmd.infer.deep_dos import (
     DeepDOS,
 )
@@ -425,7 +428,10 @@ class DeepEval(DeepEvalBackend):
     @property
     def model_type(self) -> type["DeepEvalWrapper"]:
         """The the evaluator of the model type."""
-        model_output_type = self.dp.model["Default"].model_output_type()
+        model = self.dp.model["Default"]
+        if hasattr(model, "get_is_classification") and model.get_is_classification():
+            return DeepClassification
+        model_output_type = model.model_output_type()
         if "energy" in model_output_type:
             return DeepPot
         elif "dos" in model_output_type:

@@ -10,6 +10,9 @@ import torch
 from deepmd.dpmodel.output_def import (
     OutputVariableDef,
 )
+from deepmd.pt.model.task.classification import (
+    ClassificationFittingNet,
+)
 from deepmd.pt.model.model.model import (
     BaseModel,
 )
@@ -182,6 +185,10 @@ class SeZMPropertyModel(SeZMModel):
         if "mask" in out_def_data:
             output_def["mask"] = out_def_data["mask"]
         return output_def
+
+    def get_is_classification(self) -> bool:
+        """Identify a classification head for inference dispatch."""
+        return isinstance(self.get_fitting_net(), ClassificationFittingNet)
 
     def get_task_dim(self) -> int:
         """Return the property output dimension."""

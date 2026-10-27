@@ -33,6 +33,9 @@ from deepmd.dpmodel.utils.region import (
 from deepmd.env import (
     GLOBAL_NP_FLOAT_PRECISION,
 )
+from deepmd.infer.deep_classification import (
+    DeepClassification,
+)
 from deepmd.infer.deep_dipole import (
     DeepDipole,
 )
@@ -1146,6 +1149,11 @@ class DeepEval(DeepEvalBackend):
     def model_type(self) -> type["DeepEvalWrapper"]:
         """The evaluator of the model type."""
         if self._dpmodel is not None:
+            if (
+                hasattr(self._dpmodel, "get_is_classification")
+                and self._dpmodel.get_is_classification()
+            ):
+                return DeepClassification
             model_output_type = self._dpmodel.model_output_type()
             var_name = self._dpmodel.get_var_name()
         else:
@@ -1156,7 +1164,9 @@ class DeepEval(DeepEvalBackend):
             model_output_type = [
                 d.name for d in self._model_output_def.def_outp.get_data().values()
             ]
-            var_name = None
+            if self.metadata.get("is_classification", False):
+                return DeepClassification
+            var_name = self.metadata.get("var_name")
         if "energy" in model_output_type:
             return DeepPot
         elif "dos" in model_output_type:
@@ -1194,6 +1204,8 @@ class DeepEval(DeepEvalBackend):
         """Get the name of the property (property models only)."""
         if self._dpmodel is not None and self._dpmodel.get_var_name() is not None:
             return self._dpmodel.get_var_name()
+        if self.metadata.get("var_name") is not None:
+            return str(self.metadata["var_name"])
         raise NotImplementedError(
             "get_var_name is only available for property models with the "
             "reconstructed dpmodel (not in metadata-only mode)."
@@ -1203,6 +1215,8 @@ class DeepEval(DeepEvalBackend):
         """Get the output dimension of the property (property models only)."""
         if self._dpmodel is not None:
             return self._dpmodel.get_task_dim()
+        if "task_dim" in self.metadata:
+            return int(self.metadata["task_dim"])
         raise NotImplementedError(
             "get_task_dim is only available for property models with the "
             "reconstructed dpmodel (not in metadata-only mode)."
@@ -1212,6 +1226,8 @@ class DeepEval(DeepEvalBackend):
         """Whether the property is intensive (property models only)."""
         if self._dpmodel is not None:
             return self._dpmodel.get_intensive()
+        if "intensive" in self.metadata:
+            return bool(self.metadata["intensive"])
         raise NotImplementedError(
             "get_intensive is only available for property models with the "
             "reconstructed dpmodel (not in metadata-only mode)."
